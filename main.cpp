@@ -45,18 +45,33 @@ void thread_independent_qt_gui_app(){
     });
     // still non blocking...
     thr.join();
-    // need to wait to see something.
-    std::this_thread::sleep_for(std::chrono::milliseconds(10));
-    // or we wait for the qapp to exit...
+    // We do something else, while the gui is responsive,
+    std::this_thread::sleep_for(std::chrono::milliseconds(3000));
+    // or we wait untill the qapp is finished,
     wait_for_qapp_to_finish();
 
 }
 
+void external_app_gui(){
+    int i=0;
+    QApplication qapp(i,nullptr); // this instance will be used!
+
+    std::thread thr=std::thread([](){
+        run_in_gui_thread(new RunEventImpl([](){
+            QMainWindow* window=new QMainWindow();
+            window->show();
+        }));
+    });
+    thr.join();
+    qapp.exec();
+}
+
+
 int main(){
 
     //typical_qt_gui_app();
-    thread_independent_qt_gui_app();
+    //thread_independent_qt_gui_app();
 
-
+    external_app_gui();
 }
 

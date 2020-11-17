@@ -87,6 +87,7 @@ QCoreApplication* qapplication(){
     return qapplication_manager()->app;
 }
 void wait_for_qapp_to_finish() {
+
     qapplication_manager()->wait_for_finished();
 }
 void quit(){
