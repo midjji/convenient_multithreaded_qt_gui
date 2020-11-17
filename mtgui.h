@@ -96,3 +96,5 @@ private:
 // it is a QApplication if QCoreApplication was not created first...
 QCoreApplication* qapplication();
 void wait_for_qapp_to_finish();
+// stops the qapp, from anywhere, usually not needed to be called explicitly
+void quit();

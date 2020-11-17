@@ -25,15 +25,14 @@ struct QApplicationManager
 
     ~QApplicationManager()
     {
-        // must do quit and delete app in the thread where it was made!
+        // this will intentionally wait for the QApp to finish...
         if(we_own_app ){
-            //app->quit();
-            if(thr.joinable()) thr.join();
-            //delete app;
+            quit();
+            if(thr.joinable()) thr.join();            
         }
     }
     static std::shared_ptr<QApplicationManager> create() {
-        std::cout<<"create"<<std::endl;
+
         auto qm=std::make_shared<QApplicationManager>();
         // if an instance already exists, use it.
         // this is for interop with others who does dumb shit like opencv...
@@ -72,6 +71,7 @@ struct QApplicationManager
 
         while(!(*done)) std::this_thread::sleep_for(std::chrono::milliseconds(50));
     }
+
 };
 std::mutex qapp_mtx;
 std::shared_ptr<QApplicationManager> qm=nullptr;
@@ -88,6 +88,10 @@ QCoreApplication* qapplication(){
 }
 void wait_for_qapp_to_finish() {
     qapplication_manager()->wait_for_finished();
+}
+void quit(){
+    auto app=qapplication_manager()->app;
+    run_in_gui_thread_blocking(new RunEventImpl([app](){app->quit();}));
 }
 
 void run_in_gui_thread(RunEvent* re){
