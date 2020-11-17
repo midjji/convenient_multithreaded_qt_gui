@@ -47,7 +47,7 @@ void run_in_gui_thread_blocking(RunEvent* re);
  * // Note QCoreApplication::instance() works if it has been inited, which
  *
  * the run event performs run on destruction, which happens in the QCoreApplication thread,
- * meaning you can create the RunEve´nt in any thread, where run creates or performs gui operations,
+ * meaning you can create the RunEvent in any thread, where run creates or performs gui operations,
  * but the run function occurs in the right thread so it works in a thread safe manner.
  */
 struct RunEvent: public QEvent{
@@ -64,10 +64,7 @@ struct RunEventImpl: public RunEvent
        * @param args
        *
        * \note
-       * - to minimize error risk, do not capture context and deep copy all arguments.
-       * - this class will get copied about a fair bit, across threads,
-       * so tiny pods or shared ptrs are the way to go.
-       * Dont use unique, raw works, but consider that its a bad idea.
+       * - to minimize error risk, do not capture context and deep copy all arguments.      
        */
     RunEventImpl(Lambda lambda, Args... args):RunEvent(),
         lambda(lambda), args(std::make_tuple(args...)){}
