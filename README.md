@@ -14,3 +14,6 @@ run_in_gui_thread(new RunEvent([](Args...){stuff which will be done by in the QA
 
 Remember to only create gui elements in the main loop. 
 Otherwize you will get a warning runtime, or if unlucky a segfault. 
+
+This is a rewrite of the older version where inheriting run events is done instead. 
+The difference between this solution and alternatives, is that it also automatically initializes and exec qapp for you, while still supporting in place qapps. 
