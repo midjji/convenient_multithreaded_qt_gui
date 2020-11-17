@@ -70,8 +70,8 @@ void external_app_gui(){
 int main(){
 
     //typical_qt_gui_app();
-    //thread_independent_qt_gui_app();
+    thread_independent_qt_gui_app();
 
-    external_app_gui();
+    //external_app_gui();
 }
 

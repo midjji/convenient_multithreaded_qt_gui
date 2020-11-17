@@ -18,7 +18,6 @@ class QCoreApplication;
  * \note
  * - Arguments must exist latter and be accessible in a thread safe way from the gui thread.
  *  The simplest way is to copy them.
- * - this event gets copied about, unique_ptr wont work.
  * - raw pointers and references are a bad idea.
  * - shared ptrs work wonders.
  * - thread safe, call from anywhere, no need to setup a QApplication, but it works if you have one.
