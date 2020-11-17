@@ -4,10 +4,14 @@ Qt is great for guis in part because it does not need to run in the main loop, l
 But gui operations are not reentrant for performance reasons. Which means some additional code is required to write simple functions like: plot(x,y); from any thread. This is that code. It will transparently set up the Qapplication and call exec in a background thread, or work with an existing Qapplication if present. 
 
 To execute any command in the QApplication thread, from any thread, you use the syntax. 
+
+
 #include <mtgui.h> 
 
 run_in_gui_thread_blocking(new RunEvent(\[&\](){stuff which will be done by in the QApplication stuff }));
+
 or 
+
 run_in_gui_thread(new RunEvent(\[\](Args...){stuff which will be done by in the QApplication stuff }, args...));
 
 
