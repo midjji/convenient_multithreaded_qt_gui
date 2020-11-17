@@ -6,9 +6,9 @@ But gui operations are not reentrant for performance reasons. Which means some a
 To execute any command in the QApplication thread, from any thread, you use the syntax. 
 #include <mtgui.h> 
 
-run_in_gui_thread_blocking(new RunEvent([&](){stuff which will be done by in the QApplication stuff }));
+run_in_gui_thread_blocking(new RunEvent(\[&\](){stuff which will be done by in the QApplication stuff }));
 or 
-run_in_gui_thread(new RunEvent([](Args...){stuff which will be done by in the QApplication stuff }, args...));
+run_in_gui_thread(new RunEvent(\[\](Args...){stuff which will be done by in the QApplication stuff }, args...));
 
 
 
