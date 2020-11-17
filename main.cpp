@@ -1,10 +1,10 @@
 #include <thread>
 #include <QApplication>
 #include <QMainWindow>
+#include <iostream>
 #include <mtgui.h>
 
-#include <iostream>
-using std::endl;using std::cout;
+
 void typical_qt_gui_app(){
     int i=0;
     // will crash if QApplication allready exists

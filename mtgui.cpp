@@ -90,10 +90,7 @@ void wait_for_qapp_to_finish() {
 
     qapplication_manager()->wait_for_finished();
 }
-void quit(){
-    auto app=qapplication_manager()->app;
-    run_in_gui_thread_blocking(new RunEventImpl([app](){app->quit();}));
-}
+
 
 void run_in_gui_thread(RunEvent* re){
     // note, execution order matters!
@@ -123,3 +120,9 @@ void run_in_gui_thread_blocking(RunEvent* re){
     // but it probably isnt, you dont do this alot...
     while(!done) std::this_thread::sleep_for(std::chrono::milliseconds(50));
 }
+void quit(){
+    auto app=qapplication_manager()->app;
+    RunEvent* re=new RunEventImpl([app](){app->quit();});
+    run_in_gui_thread_blocking(re);
+}
+

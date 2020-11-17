@@ -1,12 +1,13 @@
 #pragma once
 #include <QEvent>
 #include <iostream>
-using std::endl;using std::cout;
+
 
 
 struct RunEvent;
 class QEvent;
 class QCoreApplication;
+
 /**
  * @brief run_in_gui_thread
  * @param RunEvent* re
@@ -76,7 +77,7 @@ struct RunEventImpl: public RunEvent
 
     void run() override{
         run_impl(std::make_index_sequence<sizeof...(Args)>());
-    //    cout<<"run_impl3"<<endl;
+        //    cout<<"run_impl3"<<endl;
 
     }
 
@@ -98,3 +99,4 @@ QCoreApplication* qapplication();
 void wait_for_qapp_to_finish();
 // stops the qapp, from anywhere, usually not needed to be called explicitly
 void quit();
+
