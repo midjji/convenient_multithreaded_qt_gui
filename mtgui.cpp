@@ -19,9 +19,8 @@ struct Blocker:public AnyQAppLambda{
     AnyQAppLambdaEvent* re;
     std::shared_ptr<std::atomic<bool>> done;
     Blocker(AnyQAppLambdaEvent* re, std::shared_ptr<std::atomic<bool>> done):re(re),done(done){}
-    void run(){}
-    ~Blocker(){
-        delete re;
+    void run(){
+        if(re!=nullptr) delete re;
         (*done)=true;
     }
 };
@@ -41,7 +40,7 @@ struct QApplicationManager
         // this will intentionally wait for the QApp to finish...
         if(we_own_app ){
             quit();
-            if(thr.joinable()) thr.join();            
+            if(thr.joinable()) thr.join();
         }
     }
     static std::shared_ptr<QApplicationManager> create(int argc, char** argv) {
@@ -58,10 +57,10 @@ struct QApplicationManager
             qm->app->postEvent(
                         qm->app,
                         new AnyQAppLambdaEvent(new QAppLambda(
-                            [qm](){
-                            QObject::connect(qm->app, &QApplication::aboutToQuit,
-                            qm->app, [qm](){ (*qm->done)=true;  });
-                        })));
+                                                   [qm](){
+                QObject::connect(qm->app, &QApplication::aboutToQuit,
+                                 qm->app, [qm](){ (*qm->done)=true;  });
+            })));
             return qm;
         }
 
@@ -115,18 +114,16 @@ void run_in_gui_thread(AnyQAppLambda* re){
 }
 
 
-void run_in_gui_thread_blocking(AnyQAppLambdaEvent* re){
+void run_in_gui_thread_blocking(AnyQAppLambda* re){
     std::shared_ptr<std::atomic<bool>> done=std::make_shared<std::atomic<bool>>(false);
     // can I create a QObject before QApplication?
-    run_in_gui_thread(new Blocker(re,done));
+    run_in_gui_thread(new Blocker(new AnyQAppLambdaEvent(re),done));
     // if latency is an issue, consider replacing with mutexes, cvs, and wait....
     // but it probably isnt, you dont do this alot...
     while(!done) std::this_thread::sleep_for(std::chrono::milliseconds(50));
 }
 void quit(){
     auto app=qapplication_manager()->app;
-    auto rei=new QAppLambda([app](){app->quit();});
-    AnyQAppLambdaEvent* re=new AnyQAppLambdaEvent(rei);
-    run_in_gui_thread_blocking(re);
+    run_in_gui_thread_blocking(new QAppLambda([app](){app->quit();}));
 }
 
