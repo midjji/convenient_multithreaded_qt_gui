@@ -19,6 +19,15 @@ struct BlockingEvent:public AnyQAppLambdaEvent{
 
     std::unique_lock<std::mutex> ul;
     BlockingEvent(AnyQAppLambda* al, std::mutex& mtx):AnyQAppLambdaEvent(al),ul(mtx){}
+    ~BlockingEvent(){
+        // order matters, ul must unlock after this!
+        if(this->al!=nullptr)
+            this->al->run();
+        delete al;
+        al=nullptr;
+        // lowest level destructor first
+        // then second lowest, osv
+    }
 
 };
 
@@ -118,6 +127,7 @@ void run_in_gui_thread_blocking(AnyQAppLambda* re){
     qm->postEvent(qm,new BlockingEvent(re,mtx));
     std::unique_lock<std::mutex> ul(mtx);
 }
+
 void quit(){
     auto app=qapplication_manager()->app;
     run_in_gui_thread_blocking(new QAppLambda([app](){app->quit();}));
