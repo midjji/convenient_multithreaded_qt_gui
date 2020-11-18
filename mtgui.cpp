@@ -9,20 +9,17 @@ struct AnyQAppLambdaEvent:public QEvent{
     AnyQAppLambda* al=nullptr;
     // the event id is just a random number between 1000 and ushort max, and does not matter at all...
     AnyQAppLambdaEvent(AnyQAppLambda* al):QEvent(QEvent::Type(48301)),al(al){}
-    ~AnyQAppLambdaEvent(){
+    virtual ~AnyQAppLambdaEvent(){
         if(al!=nullptr)
             al->run();
         delete al;
     }
 };
-struct Blocker:public AnyQAppLambda{
-    AnyQAppLambdaEvent* re;
-    std::shared_ptr<std::atomic<bool>> done;
-    Blocker(AnyQAppLambdaEvent* re, std::shared_ptr<std::atomic<bool>> done):re(re),done(done){}
-    void run(){
-        if(re!=nullptr) delete re;
-        (*done)=true;
-    }
+struct BlockingEvent:public AnyQAppLambdaEvent{
+
+    std::unique_lock<std::mutex> ul;
+    BlockingEvent(AnyQAppLambda* al, std::mutex& mtx):AnyQAppLambdaEvent(al),ul(mtx){}
+
 };
 
 struct QApplicationManager
@@ -113,14 +110,13 @@ void run_in_gui_thread(AnyQAppLambda* re){
     // will return before event is executed
 }
 
-
 void run_in_gui_thread_blocking(AnyQAppLambda* re){
-    std::shared_ptr<std::atomic<bool>> done=std::make_shared<std::atomic<bool>>(false);
-    // can I create a QObject before QApplication?
-    run_in_gui_thread(new Blocker(new AnyQAppLambdaEvent(re),done));
-    // if latency is an issue, consider replacing with mutexes, cvs, and wait....
-    // but it probably isnt, you dont do this alot...
-    while(!done) std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    std::mutex mtx;
+    // note, execution order matters!
+    auto qm=qapplication();
+    // thread safe!
+    qm->postEvent(qm,new BlockingEvent(re,mtx));
+    std::unique_lock<std::mutex> ul(mtx);
 }
 void quit(){
     auto app=qapplication_manager()->app;
