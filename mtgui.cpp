@@ -1,22 +1,35 @@
+#include <mtgui.h>
 #include <mutex>
 #include <thread>
-#include <condition_variable>
-#include <iostream>
+#include <QEvent>
 #include <QApplication>
 
-#include <mtgui.h>
-
-
 namespace {
-
-
-
-
+struct AnyQAppLambdaEvent:public QEvent{
+    AnyQAppLambda* al=nullptr;
+    // the event id is just a random number between 1000 and ushort max, and does not matter at all...
+    AnyQAppLambdaEvent(AnyQAppLambda* al):QEvent(QEvent::Type(48301)),al(al){}
+    ~AnyQAppLambdaEvent(){
+        if(al!=nullptr)
+            al->run();
+        delete al;
+    }
+};
+struct Blocker:public AnyQAppLambda{
+    AnyQAppLambdaEvent* re;
+    std::shared_ptr<std::atomic<bool>> done;
+    Blocker(AnyQAppLambdaEvent* re, std::shared_ptr<std::atomic<bool>> done):re(re),done(done){}
+    void run(){}
+    ~Blocker(){
+        delete re;
+        (*done)=true;
+    }
+};
 
 struct QApplicationManager
 {
 
-    // if we dont own, then this gets set when the qapp quits
+    // if we dont own, then this gets set when the QApp quits
     std::shared_ptr<std::atomic<bool>> done=std::make_shared<std::atomic<bool>>(false);
     bool we_own_app=true;
     std::thread thr;
@@ -31,7 +44,7 @@ struct QApplicationManager
             if(thr.joinable()) thr.join();            
         }
     }
-    static std::shared_ptr<QApplicationManager> create() {
+    static std::shared_ptr<QApplicationManager> create(int argc, char** argv) {
 
         auto qm=std::make_shared<QApplicationManager>();
         // if an instance already exists, use it.
@@ -44,18 +57,18 @@ struct QApplicationManager
 
             qm->app->postEvent(
                         qm->app,
-                        new RunEventImpl([](std::shared_ptr<QApplicationManager> qm){
+                        new AnyQAppLambdaEvent(new QAppLambda(
+                            [qm](){
                             QObject::connect(qm->app, &QApplication::aboutToQuit,
                             qm->app, [qm](){ (*qm->done)=true;  });
-                        },qm));
+                        })));
             return qm;
         }
 
         std::atomic<bool> ready=false;
         qm->thr=std::thread([&]()
         {
-            int i=0;
-            qm->app = new QApplication(i,nullptr); // accessible by instance
+            qm->app = new class QApplication(argc,argv); // accessible by instance
             // note that qm is captured by copy here, thus it always exist till the closure is finished i.e. when the QApplication is deleted.
             QObject::connect(qm->app, &QApplication::aboutToQuit, qm->app, [qm](){ (*qm->done)=true; });
             ready=true;
@@ -73,18 +86,19 @@ struct QApplicationManager
     }
 
 };
-std::mutex qapp_mtx;
+std::mutex QApp_mtx;
 std::shared_ptr<QApplicationManager> qm=nullptr;
-}
-std::shared_ptr<QApplicationManager> qapplication_manager(){
-    std::unique_lock<std::mutex> ul(qapp_mtx);
+
+std::shared_ptr<QApplicationManager> qapplication_manager(int argc=0, char** argv=nullptr){
+    std::unique_lock<std::mutex> ul(QApp_mtx);
     if(qm==nullptr)
-        qm=QApplicationManager::create();
+        qm=QApplicationManager::create(argc,argv);
     return qm;
 }
+}
 
-QCoreApplication* qapplication(){
-    return qapplication_manager()->app;
+QCoreApplication* qapplication(int argc, char** argv){
+    return qapplication_manager(argc,argv)->app;
 }
 void wait_for_qapp_to_finish() {
 
@@ -92,27 +106,16 @@ void wait_for_qapp_to_finish() {
 }
 
 
-void run_in_gui_thread(RunEvent* re){
+void run_in_gui_thread(AnyQAppLambda* re){
     // note, execution order matters!
     auto qm=qapplication();
     // thread safe!
-    qm->postEvent(qm,re);
+    qm->postEvent(qm,new AnyQAppLambdaEvent(re));
     // will return before event is executed
 }
 
-namespace  {
-struct Blocker:public RunEvent{
-    RunEvent* re;
-    std::shared_ptr<std::atomic<bool>> done;
-    Blocker(RunEvent* re, std::shared_ptr<std::atomic<bool>> done):re(re),done(done){}
-    void run(){}
-    ~Blocker(){
-        delete re;
-        (*done)=true;
-    }
-};
-}
-void run_in_gui_thread_blocking(RunEvent* re){
+
+void run_in_gui_thread_blocking(AnyQAppLambdaEvent* re){
     std::shared_ptr<std::atomic<bool>> done=std::make_shared<std::atomic<bool>>(false);
     // can I create a QObject before QApplication?
     run_in_gui_thread(new Blocker(re,done));
@@ -122,7 +125,8 @@ void run_in_gui_thread_blocking(RunEvent* re){
 }
 void quit(){
     auto app=qapplication_manager()->app;
-    RunEvent* re=new RunEventImpl([app](){app->quit();});
+    auto rei=new QAppLambda([app](){app->quit();});
+    AnyQAppLambdaEvent* re=new AnyQAppLambdaEvent(rei);
     run_in_gui_thread_blocking(re);
 }
 

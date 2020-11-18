@@ -1,9 +1,8 @@
 #include <thread>
-#include <QApplication>
-#include <QMainWindow>
 #include <iostream>
 #include <mtgui.h>
-
+#include <QApplication>
+#include <QMainWindow>
 
 void typical_qt_gui_app(){
     int i=0;
@@ -22,23 +21,20 @@ void thread_independent_qt_gui_app(){
 
     //No need to initialize qt, but it does work
     //int a=0;
-    run_in_gui_thread(new RunEventImpl([](){
-
+    run_in_gui_thread(new QAppLambda([](){
         QMainWindow* window=new QMainWindow();
-
         window->show();
-
     }));
 
     // non blocking
-    run_in_gui_thread(new RunEventImpl([](){
+    run_in_gui_thread(new QAppLambda([](){
         QMainWindow* window=new QMainWindow();
         window->show();
     }));
 
     // works fine from other threads too...
     std::thread thr=std::thread([](){
-        run_in_gui_thread(new RunEventImpl([](){
+        run_in_gui_thread(new QAppLambda([](){
             QMainWindow* window=new QMainWindow();
             window->show();
         }));
@@ -57,7 +53,7 @@ void external_app_gui(){
     QApplication qapp(i,nullptr); // this instance will be used!
 
     std::thread thr=std::thread([](){
-        run_in_gui_thread(new RunEventImpl([](){
+        run_in_gui_thread(new QAppLambda([](){
             QMainWindow* window=new QMainWindow();
             window->show();
         }));

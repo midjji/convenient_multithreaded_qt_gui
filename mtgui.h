@@ -1,12 +1,38 @@
 #pragma once
-#include <QEvent>
-#include <iostream>
+/* ********************************* FILE ************************************/
+/** \file    mtgui.h
+ *
+ * \brief    Hide away QApplication in its own thread and provide convenient run in gui thread helpers
+ *
+ *
+ * Issues:
+ * - backed by hidden global singletons that initialize on first request, though the QApplication singleton is still a mess.
+ * - QApplication must be created before the first related qobject, so if needed ask for the instance.
+ *
+ * // copy into the lambda
+ * run_in_gui_thread(new AnyQAppLambda([arg1, arg2](){do_something(arg1, arg2)})
+ * // block to ensure scope remains valid
+ * run_in_gui_thread_blocking(new AnyQAppLambda([&arg1, &arg2](){do_something(arg1, arg2);})
+ *
+ * run_in_gui_thread(new AnyQAppLambda([](function_ptr, Args...){function_ptr(args);},Args... args)
+ *
+ *
+ * \remark
+ * - c++17, though easy to downgrade to c++11 if needed,
+ * - It may be the case that ios gui explicitly requires qapplication to be in the main thread,
+ *       in this case, you must create and exec QApplication in main, after which all this still works perfectly,
+ *       which is good for making apis simple
+ *
+ * \author   Mikael Persson
+ *
+ ******************************************************************************/
+
+#include <tuple>
+struct AnyQAppLambda;
+struct QCoreApplication;
 
 
 
-struct RunEvent;
-class QEvent;
-class QCoreApplication;
 
 /**
  * @brief run_in_gui_thread
@@ -25,7 +51,7 @@ class QCoreApplication;
  * run must take a short time only, no heavy work here. But setting up a few windows is fine.
  *
  */
-void run_in_gui_thread(RunEvent* re);
+void run_in_gui_thread(AnyQAppLambda* re);
 
 /**
  * @brief run_in_gui_thread_blocking
@@ -36,26 +62,30 @@ void run_in_gui_thread(RunEvent* re);
  *
  * run_in_gui_thread_blocking(new RunEventImpl([&](){Do stuff with local references... }))
  */
-void run_in_gui_thread_blocking(RunEvent* re);
+void run_in_gui_thread_blocking(AnyQAppLambda* re);
 
 /**
- * @brief The RunEvent struct
- *
- * run_in_gui_thread(RunEventImpl([](Args...){do_something(args...)},Args... args)
+ * @brief The AnyQAppLambda struct
  *
  *
- * // Note QCoreApplication::instance() works if it has been inited, which
  *
- * the run event performs run on destruction, which happens in the QCoreApplication thread,
- * meaning you can create the RunEvent in any thread, where run creates or performs gui operations,
- * but the run function occurs in the right thread so it works in a thread safe manner.
+ *
+ *
  */
-struct RunEvent: public QEvent{
-    RunEvent():QEvent(QEvent::Type(48301)){} // the number is not important !=0
+struct AnyQAppLambda{
     virtual void run()=0;
+    virtual ~AnyQAppLambda(){}
 };
 template<class Lambda, class... Args>
-struct RunEventImpl: public RunEvent
+
+/**
+ * @brief The QAppLambda struct,
+ *
+ * This lets you use a function pointer instead of a closure if you wish.
+ * the closure is usually enough though.
+ *
+*/
+struct QAppLambda: public AnyQAppLambda
 {
     //  // note do not capture context, all args must exist when called later,
     /**
@@ -64,17 +94,16 @@ struct RunEventImpl: public RunEvent
        * @param args
        *
        * \note
-       * - to minimize error risk, do not capture context and deep copy all arguments.      
+       * - to minimize error risk, do not capture context and deep copy all arguments.
+       * - yes wrapping this class in a function is natural and should be default,
+       *      but that causes compiler to exceed max template recursion depth
        */
-    RunEventImpl(Lambda lambda, Args... args):RunEvent(),
+    QAppLambda(Lambda lambda, Args... args):AnyQAppLambda(),
         lambda(lambda), args(std::make_tuple(args...)){}
-    ~RunEventImpl(){run(); //cout<<"run_impl4"<<endl;
-                   }
 
-    void run() override{
+
+    void run() override {
         run_impl(std::make_index_sequence<sizeof...(Args)>());
-        //    cout<<"run_impl3"<<endl;
-
     }
 
 private:
@@ -87,12 +116,21 @@ private:
     }
 };
 
-// this gets or creates and the QApplication in a new thread and runs execs()
-// in that thread, then waits untill it has been fully created.
-// there is no need to call this function in general...
-// it is a QApplication if QCoreApplication was not created first...
-QCoreApplication* qapplication();
+/**
+ * @brief qapplication
+ * @return a pointer to the QApplication singleton instance,
+ *
+ * Unlike QApplication::instance(),
+ * this will create and exec a QApplication if one is not available
+ * Note returns QCoreApplication if that was was started first.
+ *
+ * i, strs are used to initialize if this creates the QApplication, otherwize discarded
+ *
+ */
+QCoreApplication* qapplication(int argc=0, char** argv=nullptr);
 void wait_for_qapp_to_finish();
-// stops the qapp, from anywhere, usually not needed to be called explicitly
+// stops the QApp, from anywhere, usually not needed to be called explicitly
 void quit();
+
+unsigned char wait_key();
 
