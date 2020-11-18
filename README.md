@@ -8,11 +8,11 @@ To execute any command in the QApplication thread, from any thread, you use the 
 
 #include <mtgui.h> 
 
-run_in_gui_thread_blocking(new RunEvent(\[&\](){stuff which will be done by in the QApplication stuff }));
+run_in_gui_thread_blocking(new QAppLambda(\[&\](){stuff which will be done by in the QApplication stuff }));
 
 or 
 
-run_in_gui_thread(new RunEvent(\[\](Args...){stuff which will be done by in the QApplication stuff }, args...));
+run_in_gui_thread(new QAppLambda(\[\](Args...){stuff which will be done by in the QApplication stuff }, args...));
 
 
 

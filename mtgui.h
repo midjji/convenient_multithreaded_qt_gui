@@ -132,5 +132,7 @@ void wait_for_qapp_to_finish();
 // stops the QApp, from anywhere, usually not needed to be called explicitly
 void quit();
 
+
+// for opencv
 unsigned char wait_key();
 
