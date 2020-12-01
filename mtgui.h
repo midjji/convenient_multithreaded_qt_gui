@@ -133,6 +133,6 @@ void wait_for_qapp_to_finish();
 void quit();
 
 
-// for opencv
+// for opencv,//TODO
 unsigned char wait_key();
 
