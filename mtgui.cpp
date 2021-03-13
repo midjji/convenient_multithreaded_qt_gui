@@ -3,6 +3,7 @@
 #include <thread>
 #include <QEvent>
 #include <QApplication>
+#include <iostream>
 
 namespace {
 struct AnyQAppLambdaEvent:public QEvent{
@@ -57,6 +58,7 @@ struct QApplicationManager
         if(QApplication::instance()!=nullptr){
             qm->we_own_app=false;
             qm->app=QCoreApplication::instance();
+            std::cout<<"warning, the plotter is not managing the qapp instance, did you remember to start it? preferably just dont create a qapp on your own at all"<<std::endl;
 
 
 
@@ -98,6 +100,9 @@ std::shared_ptr<QApplicationManager> qapplication_manager(int argc=0, char** arg
     std::unique_lock<std::mutex> ul(QApp_mtx);
     if(qm==nullptr)
         qm=QApplicationManager::create(argc,argv);
+    if(!qm->we_own_app)
+        std::cout<<"warning, the plotter is not managing the qapp instance, did you remember to start it? "<<std::endl;
+
     return qm;
 }
 }
