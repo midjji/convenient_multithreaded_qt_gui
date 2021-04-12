@@ -18,9 +18,11 @@ struct AnyQAppLambdaEvent:public QEvent{
 };
 struct BlockingEvent:public AnyQAppLambdaEvent{
 
-    std::unique_lock<std::mutex> ul;
-    BlockingEvent(AnyQAppLambda* al, std::mutex& mtx):AnyQAppLambdaEvent(al),ul(mtx){}
+    std::atomic<bool>* done;
+    BlockingEvent(AnyQAppLambda* al, std::atomic<bool>* done):
+        AnyQAppLambdaEvent(al),done(done){}
     ~BlockingEvent(){
+
         // order matters, ul must unlock after this!
         if(this->al!=nullptr)
             this->al->run();
@@ -28,6 +30,8 @@ struct BlockingEvent:public AnyQAppLambdaEvent{
         al=nullptr;
         // lowest level destructor first
         // then second lowest, osv
+        done->store(true);
+
     }
 
 };
@@ -83,7 +87,7 @@ struct QApplicationManager
         });
 
         while(!ready) std::this_thread::sleep_for(std::chrono::milliseconds(50));
-
+std::this_thread::sleep_for(std::chrono::milliseconds(50));
         return qm;
     }
 
@@ -100,8 +104,7 @@ std::shared_ptr<QApplicationManager> qapplication_manager(int argc=0, char** arg
     std::unique_lock<std::mutex> ul(QApp_mtx);
     if(qm==nullptr)
         qm=QApplicationManager::create(argc,argv);
-    if(!qm->we_own_app)
-        std::cout<<"warning, the plotter is not managing the qapp instance, did you remember to start it? "<<std::endl;
+    //if(!qm->we_own_app)        std::cout<<"warning, the plotter is not managing the qapp instance, did you remember to start it? "<<std::endl;
 
     return qm;
 }
@@ -125,12 +128,15 @@ void run_in_gui_thread(AnyQAppLambda* re){
 }
 
 void run_in_gui_thread_blocking(AnyQAppLambda* re){
-    std::mutex mtx;
+    std::atomic<bool> done=false;
     // note, execution order matters!
     auto qm=qapplication();
     // thread safe!
-    qm->postEvent(qm,new BlockingEvent(re,mtx));
-    std::unique_lock<std::mutex> ul(mtx);
+    qm->postEvent(qm,new BlockingEvent(re,&done));
+    while(!done){
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+
+    }
 }
 
 void quit(){
